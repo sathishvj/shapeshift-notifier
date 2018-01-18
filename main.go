@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	gosxnotifier "github.com/deckarep/gosx-notifier"
@@ -18,6 +19,7 @@ type Pair struct {
 	To        string
 	Sign      string
 	Threshold float64
+	Amount    float64
 }
 
 func main() {
@@ -27,7 +29,10 @@ func main() {
 	interval := flag.Int("interval", 30, "poll at this interval (seconds)")
 	flag.Parse()
 	if *help {
-		fmt.Println("Usage example: shapeshift-notifier -popup=false -interval=32 \"snt_bat>0.75\" \"eth_btc<0.01\nDefaults: popup=true, interval=30, args=\"eth_btc>0.1\" \nSigns: Only > and < are allowed for operations.")
+		fmt.Println(`Usage example: shapeshift-notifier -popup=false -interval=32 "snt_bat,>0.75,=100000" "eth_btc<0.01" "rlc_gnt,=150"
+Defaults: popup=true, interval=30, args="eth_btc,>0.1,=0" 
+Signs: Only > and < are allowed for operations. = indicates the amount to convert.  Only the first part with token codes is mandatory.
+`)
 		return
 	}
 
@@ -40,6 +45,7 @@ func main() {
 			To:        "btc",
 			Sign:      ">",
 			Threshold: 0.1,
+			Amount:    0,
 		}
 
 		pairs = []Pair{snt_bat}
@@ -81,6 +87,10 @@ func checkAndNotify(p Pair, popup *bool) {
 				notify(p.From, p.To, p.Sign, p.Threshold, rate)
 			}
 		}
+	}
+
+	if p.Amount > 0 {
+		fmt.Printf(" | %f %s = %f %s", p.Amount, p.From, p.Amount*rate, p.To)
 	}
 	fmt.Println()
 }
@@ -142,21 +152,55 @@ func notify(from, to, sign string, threshold, rate float64) {
 // only < and > are allowed
 func parseCmdLinePairs(args []string) []Pair {
 	var pairs []Pair
-	var err error
-	for _, v := range args {
-		re := regexp.MustCompile("(.*)_(.*)([><])(.*)")
-		match := re.FindAllStringSubmatch(v, 1)
+	//var err error
+
+	/*
+		for _, v := range args {
+			re := regexp.MustCompile("(.*)_(.*)([><])(.*)")
+			match := re.FindAllStringSubmatch(v, 1)
+			p := Pair{
+				From: match[0][1],
+				To:   match[0][2],
+				Sign: match[0][3],
+			}
+			p.Threshold, err = strconv.ParseFloat(match[0][4], 64)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			pairs = append(pairs, p)
+		}
+	*/
+
+	for _, arg := range args {
+		parts := strings.Split(arg, ",")
+		re := regexp.MustCompile("(.*)_(.*)")
+		match := re.FindAllStringSubmatch(parts[0], 1)
 		p := Pair{
 			From: match[0][1],
 			To:   match[0][2],
-			Sign: match[0][3],
 		}
-		p.Threshold, err = strconv.ParseFloat(match[0][4], 64)
-		if err != nil {
-			log.Fatal(err)
+
+		for _, part := range parts[1:] {
+			f, err := strconv.ParseFloat(part[1:], 64)
+			if err != nil {
+				log.Fatalf("Cannot convert float value: %s. %v\n", part[1:], err)
+			}
+			switch part[0] {
+			case '<':
+				p.Sign = "<"
+				p.Threshold = f
+			case '>':
+				p.Sign = ">"
+				p.Threshold = f
+			case '=':
+				p.Amount = f
+			}
 		}
 
 		pairs = append(pairs, p)
+
+		fmt.Printf("%+v\n", p)
 	}
 
 	return pairs
