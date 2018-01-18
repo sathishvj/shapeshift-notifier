@@ -14,7 +14,7 @@ The notification part, especially, might not work on other platforms.  Disable i
 	go build
 
 ## Usage
-	Usage example: shapeshift-notifier -popup=false -interval=32 "snt_bat>0.75" "eth_btc<0.01
-	Defaults: popup=true, interval=30, args="eth_btc>0.1"
-	Signs: Only > and < are allowed for operations.
+	Usage example: shapeshift-notifier -popup=false -interval=32 "snt_bat,>0.75,=100000" "eth_btc<0.01" "rlc_gnt,=150"
+	Defaults: popup=true, interval=30, args="eth_btc,>0.1,=0"
+	Signs: Only > and < are allowed for operations. = indicates the amount to convert.  Only the first part with token codes is mandatory.
 
