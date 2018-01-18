@@ -8,9 +8,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	gosxnotifier "github.com/deckarep/gosx-notifier"
+	humanize "github.com/dustin/go-humanize"
 	"github.com/hunterlong/shapeshift"
 )
 
@@ -21,6 +23,8 @@ type Pair struct {
 	Threshold float64
 	Amount    float64
 }
+
+var tw *tabwriter.Writer
 
 func main() {
 
@@ -57,42 +61,66 @@ Signs: Only > and < are allowed for operations. = indicates the amount to conver
 	}
 	fmt.Println()
 
+	tw = new(tabwriter.Writer)
+	tw.Init(os.Stdout, 0, 0, 0, ' ', tabwriter.AlignRight)
+
+	fmt.Fprintf(tw, "Time \t cryptos \t rate \t match? \t \t converted amounts \n")
+
 	//run immediately first
 	for _, p := range pairs {
-		checkAndNotify(p, popup)
+		checkAndNotify(tw, p, popup)
 	}
+	fmt.Fprintf(tw, ".")
+	fmt.Fprintln(tw)
+	tw.Flush()
+
 	for range time.Tick(time.Second * time.Duration(*interval)) {
 		for _, p := range pairs {
-			checkAndNotify(p, popup)
+			checkAndNotify(tw, p, popup)
 		}
+		fmt.Fprintf(tw, ".")
+		fmt.Fprintln(tw)
+		tw.Flush()
 	}
 }
 
-func checkAndNotify(p Pair, popup *bool) {
+func checkAndNotify(tw *tabwriter.Writer, p Pair, popup *bool) {
 
 	rate := getrate(p.From, p.To)
-	fmt.Printf("%s: %s_%s: %f", time.Now().Format("3:04"), p.From, p.To, rate)
+	if rate < 0 {
+		return
+	}
+	//fmt.Printf("%s: %s_%s: %f", time.Now().Format("3:04"), p.From, p.To, rate)
+	fmt.Fprintf(tw, "%s \t %s_%s \t %13.7f \t", time.Now().Format("3:04"), p.From, p.To, rate)
 	switch p.Sign {
 	case ">":
 		if rate > p.Threshold {
-			fmt.Printf(" | matched %s %f", p.Sign, p.Threshold)
+			fmt.Fprintf(tw, "  matched %s %f \t |", p.Sign, p.Threshold)
 			if *popup {
 				notify(p.From, p.To, p.Sign, p.Threshold, rate)
 			}
+		} else {
+			fmt.Fprintf(tw, "  - \t |")
 		}
+
 	case "<":
 		if rate < p.Threshold {
-			fmt.Printf(" | matched %s %f", p.Sign, p.Threshold)
+			fmt.Fprintf(tw, "  matched %s %f \t |", p.Sign, p.Threshold)
 			if *popup {
 				notify(p.From, p.To, p.Sign, p.Threshold, rate)
 			}
+		} else {
+			fmt.Fprintf(tw, "  - \t |")
 		}
+	default:
+		fmt.Fprintf(tw, "  - \t |")
 	}
 
 	if p.Amount > 0 {
-		fmt.Printf(" | %f %s = %f %s", p.Amount, p.From, p.Amount*rate, p.To)
+		//fmt.Fprintf(tw, " %10.4f %s = %10.4f %s", p.Amount, p.From, p.Amount*rate, p.To)
+		fmt.Fprintf(tw, " %s \t %s \t = \t %s \t %s", humanize.Commaf(p.Amount), p.From, humanize.Commaf(p.Amount*rate), p.To)
 	}
-	fmt.Println()
+	fmt.Fprintln(tw)
 }
 
 func getrate(from, to string) float64 {
@@ -101,7 +129,9 @@ func getrate(from, to string) float64 {
 	rate, err := pair.GetRates()
 
 	if err != nil {
-		panic(err)
+		//panic(err)
+		fmt.Printf("Error getting rates: %v\n", err)
+		return -1.0
 	}
 
 	//fmt.Printf("%s: %s_%s: %f\n", time.Now().Format("3:04"), from, to, rate)
@@ -200,7 +230,7 @@ func parseCmdLinePairs(args []string) []Pair {
 
 		pairs = append(pairs, p)
 
-		fmt.Printf("%+v\n", p)
+		//fmt.Printf("%+v\n", p)
 	}
 
 	return pairs
