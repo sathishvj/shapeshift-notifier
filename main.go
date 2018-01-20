@@ -95,30 +95,30 @@ func checkAndNotify(tw *tabwriter.Writer, p Pair, popup *bool) {
 	switch p.Sign {
 	case ">":
 		if rate > p.Threshold {
-			fmt.Fprintf(tw, "  matched %s %f \t |", p.Sign, p.Threshold)
+			fmt.Fprintf(tw, "  matched %s %f \t ", p.Sign, p.Threshold)
 			if *popup {
 				notify(p.From, p.To, p.Sign, p.Threshold, rate)
 			}
 		} else {
-			fmt.Fprintf(tw, "  - \t |")
+			fmt.Fprintf(tw, "  - \t ")
 		}
 
 	case "<":
 		if rate < p.Threshold {
-			fmt.Fprintf(tw, "  matched %s %f \t |", p.Sign, p.Threshold)
+			fmt.Fprintf(tw, "  matched %s %f \t ", p.Sign, p.Threshold)
 			if *popup {
 				notify(p.From, p.To, p.Sign, p.Threshold, rate)
 			}
 		} else {
-			fmt.Fprintf(tw, "  - \t |")
+			fmt.Fprintf(tw, "  - \t ")
 		}
 	default:
-		fmt.Fprintf(tw, "  - \t |")
+		fmt.Fprintf(tw, "  - \t ")
 	}
 
 	if p.Amount > 0 {
 		//fmt.Fprintf(tw, " %10.4f %s = %10.4f %s", p.Amount, p.From, p.Amount*rate, p.To)
-		fmt.Fprintf(tw, " %s \t %s \t = \t %s \t %s", humanize.Commaf(p.Amount), p.From, humanize.Commaf(p.Amount*rate), p.To)
+		fmt.Fprintf(tw, " %s \t %s \t = \t %s \t %s", humanize.Commaf(p.Amount), p.From, humanize.FormatFloat("###,###.####", p.Amount*rate), p.To)
 	}
 	fmt.Fprintln(tw)
 }
