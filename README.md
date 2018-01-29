@@ -4,6 +4,9 @@
 I've tested/used this only on a Mac.
 The notification part, especially, might not work on other platforms.  Disable it with -popup=false if required.
 
+## Download and Usage
+You can download the executable version for your platform (windows/linux/mac) from the releases tab and run it as shown in the Usage example below.
+
 ## Requirements
 * [dep](https://github.com/golang/dep)
 * golang
